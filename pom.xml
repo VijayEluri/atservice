@@ -23,10 +23,6 @@
       <name>Local Nexus Snapshots Repository</name>
       <url>http://localhost:8081/nexus/content/repositories/snapshots</url>
     </snapshotRepository>
-    <site>
-      <id>github</id>
-      <url>http://github.com/jdcasey/atservice</url>
-    </site>
   </distributionManagement>
   
   <dependencyManagement>
