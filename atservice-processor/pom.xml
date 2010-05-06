@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <artifactId>atservice</artifactId>
+    <groupId>org.commonjava.atservice</groupId>
+    <version>0.1-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>atservice-processor</artifactId>
+  <name>@Service Annotation Processor</name>
+
+  <dependencies>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+    </dependency>
+    <dependency>
+    	<groupId>${project.groupId}</groupId>
+    	<artifactId>atservice-annotation</artifactId>
+    	<version>${project.version}</version>
+    </dependency>
+  </dependencies>
+</project>
