@@ -16,7 +16,17 @@
 
 package org.commonjava.atservice.processor;
 
-import org.commonjava.atservice.annotation.Service;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.Charset;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Filer;
@@ -29,18 +39,12 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
+import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
-import javax.tools.Diagnostic.Kind;
 
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.nio.charset.Charset;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
+import org.commonjava.atservice.annotation.Service;
 
 @SupportedAnnotationTypes( { "org.commonjava.atservice.annotation.Service" } )
 @SupportedSourceVersion( SourceVersion.RELEASE_6 )
@@ -59,44 +63,71 @@ public class ServiceAnnotationProcessor
         for ( final Element el : roundEnvironment.getElementsAnnotatedWith( Service.class ) )
         {
             final TypeElement tel = (TypeElement) el;
-            final String impl = tel.getQualifiedName() == null ? null : tel.getQualifiedName().toString();
+            final String impl = tel.getQualifiedName() == null ? null : tel.getQualifiedName()
+                                                                           .toString();
 
             if ( impl == null )
             {
                 continue;
             }
 
-            String serviceName = null;
+            final Set<String> serviceNames = new HashSet<String>();
             for ( final AnnotationMirror aMirror : el.getAnnotationMirrors() )
             {
-                final String aName =
-                    ( (TypeElement) aMirror.getAnnotationType().asElement() ).getQualifiedName().toString();
+                final String aName = ( (TypeElement) aMirror.getAnnotationType()
+                                                            .asElement() ).getQualifiedName()
+                                                                          .toString();
 
                 if ( !aName.equals( Service.class.getName() ) )
                 {
                     continue;
                 }
 
-                final AnnotationValue value = aMirror.getElementValues().values().iterator().next();
-                serviceName = value.toString();
-                if ( serviceName.endsWith( ".class" ) )
+                final Iterator<? extends AnnotationValue> valueIterator = aMirror.getElementValues()
+                                                                                 .values()
+                                                                                 .iterator();
+                while ( valueIterator.hasNext() )
                 {
-                    serviceName = serviceName.substring( 0, serviceName.length() - ".class".length() );
+                    final AnnotationValue value = valueIterator.next();
+                    String s = value.toString();
+                    String[] ss = null;
+
+                    if ( s.startsWith( "{" ) )
+                    {
+                        s = s.substring( 1, s.length() - 1 );
+                        ss = s.split( "\\s*,\\s*" );
+                    }
+                    else
+                    {
+                        ss = new String[] { s };
+                    }
+
+                    for ( final String className : ss )
+                    {
+                        serviceNames.add( className.substring( 0, className.length() - ".class".length() ) );
+                    }
                 }
             }
 
-            if ( serviceName == null )
+            if ( serviceNames.isEmpty() )
             {
-                continue;
+                final List<? extends TypeMirror> interfaces = tel.getInterfaces();
+                for ( final TypeMirror type : interfaces )
+                {
+                    serviceNames.add( type.toString() );
+                }
             }
 
-            Set<String> impls = implMap.get( serviceName );
-            if ( impls == null )
+            for ( final String serviceName : serviceNames )
             {
-                impls = new LinkedHashSet<String>();
-                implMap.put( serviceName, impls );
+                Set<String> impls = implMap.get( serviceName );
+                if ( impls == null )
+                {
+                    impls = new LinkedHashSet<String>();
+                    implMap.put( serviceName, impls );
+                }
+                impls.add( impl );
             }
-            impls.add( impl );
         }
 
         for ( final Map.Entry<String, Set<String>> serviceEntry : implMap.entrySet() )
@@ -106,8 +137,8 @@ public class ServiceAnnotationProcessor
             try
             {
                 final FileObject file =
-                    filer.createResource( StandardLocation.CLASS_OUTPUT, "", "META-INF/services/"
-                        + serviceEntry.getKey(), (Element[]) null );
+                    filer.createResource( StandardLocation.CLASS_OUTPUT, "",
+                                          "META-INF/services/" + serviceEntry.getKey(), (Element[]) null );
 
                 writer = new OutputStreamWriter( file.openOutputStream(), Charset.forName( "UTF-8" ) );
 
